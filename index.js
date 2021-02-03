@@ -12,6 +12,36 @@ const config = {
 
 const bot = new Telegraf(process.env.TOKEN);
 
+bot.command('weather', (ctx) => {
+    const link = 'https://www.gismeteo.ru/weather-babyakovo-140308/';
+    ctx.reply('ищу погоду в Бабяково 🌧');
+
+    (async () => {
+        const browser = await puppeteer.launch(config);
+        const page = await browser.newPage();
+        page.setViewport({ width: 1200, height: 900 });
+        await page.goto(link, { waitUntil: 'domcontentloaded' });
+
+        // let title = await page.title();
+
+        let answer = await page.evaluate(async () => {
+            // let list = [];
+            const selectorClass = 'span.unit.unit_temperature_c';
+            let nowTemp = await document.querySelector(selectorClass).innerText;
+            // let title = item.querySelector(titleClass).innerText;
+
+            return 'Сейчас за окном ' + nowTemp;
+        });
+
+        await ctx.reply(answer);
+        // await console.log(blocks);
+
+        await browser.close();
+    })();
+
+
+});
+
 bot.start((ctx) => {
     console.log('start');
     ctx.reply('О! Я ушёл искать новости) 🗞📰🗞');
@@ -57,5 +87,7 @@ bot.start((ctx) => {
     });
 
 });
+
+
 
 bot.launch();
