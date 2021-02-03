@@ -1,5 +1,7 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
+const schedule = require('node-schedule');
+const { Telegraf } = require('telegraf');
 
 const link = 'https://chr.rbc.ru/short_news';
 const config = { 
@@ -8,34 +10,52 @@ const config = {
     devtools: true 
 };
 
-(async () => {
-    const browser = await puppeteer.launch(config);
-    const page = await browser.newPage();
-    page.setViewport({width:320,height:640});
-    await page.goto(link,{waitUntil:'domcontentloaded'});
+const bot = new Telegraf(process.env.TOKEN);
 
-    // let title = await page.title();
+bot.start((ctx) => {
+    console.log('start');
+    ctx.reply('О! Я ушёл искать новости) 🗞📰🗞');
+    const job = schedule.scheduleJob('*/10 * * * *', function () {
 
-    let blocks = await page.evaluate(async ()=>{
-        let list = [];
-        const selectorlistClass = 'div.js-news-feed-item.js-yandex-counter';
-        const titleClass = 'span.item__title';
-        const linkClass = 'a.item__link';
-        let containerList = await document.querySelectorAll(selectorlistClass);
+        (async () => {
+            const browser = await puppeteer.launch(config);
+            const page = await browser.newPage();
+            page.setViewport({ width: 320, height: 640 });
+            await page.goto(link, { waitUntil: 'domcontentloaded' });
 
-        containerList.forEach((item)=>{
-            let title = item.querySelector(titleClass).innerText;
-            let link = item.querySelector(linkClass).href;
+            // let title = await page.title();
 
-            list.push({title,link});
-        });
+            let blocks = await page.evaluate(async () => {
+                let list = [];
+                const selectorlistClass = 'div.js-news-feed-item.js-yandex-counter';
+                const titleClass = 'span.item__title';
+                const linkClass = 'a.item__link';
+                let containerList = await document.querySelectorAll(selectorlistClass);
 
-        return list;
+                containerList.forEach((item) => {
+                    let title = item.querySelector(titleClass).innerText;
+                    let link = item.querySelector(linkClass).href;
+
+                    list.push({ title, link });
+                });
+
+                return list;
+            });
+
+            await blocks.forEach((elem)=>{
+                // ctx.reply('my text');
+                let text = elem.title + ' [🗞 посмотреть](' + elem.link +'.)';
+                // ctx.reply('🗞 ' + elem.title);
+                ctx.replyWithMarkdownV2(text);
+            });
+            // await console.log(blocks);
+
+            await browser.close();
+        })();
+
+        // console.log('The answer to life, the universe, and everything!');
     });
 
-    await console.log(blocks);
+});
 
-    await browser.close();
-})();
-// const test = process.env.APP_TEST;
-// console.log('hello ' + test);
+bot.launch();
